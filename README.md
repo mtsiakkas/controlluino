@@ -6,6 +6,8 @@ Developed for the Arduino DUE.
 
 Vehicle structure agnostic.
 
+Depends on RXTX Java library for serial communications (http://rxtx.qbang.org/)
+
 ## Parts:
 1. Ground station software (Java)
   1. Simple version - vehicle init/reference update/data collection
