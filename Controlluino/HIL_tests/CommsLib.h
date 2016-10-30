@@ -1,5 +1,5 @@
 
-#include "Controlluino.h"
+#include "HIL_tests.h"
 
 /***********************************************************************************/
 /*                                                                                 */
@@ -13,7 +13,7 @@
 /***********************************************************************************/
 
 #define XBEE_BAUD_RATE 115200
-#define XBEE_SEND_DELAY delayMicroseconds(10)
+#define XBEE_SEND_DELAY delay(10)
 
 #define X_READY_MSG 0
 #define X_INIT_SENSOR 1

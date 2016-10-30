@@ -20,7 +20,9 @@ MainWindow::MainWindow(QWidget *parent) :
     QString str[7] = {"SETUP","POWER_OFF","STOP","START","SENSOR","REFERENCE","MOTOR_SETUP"};
     for(auto s : str)
         ui->cmbMsgSelect->addItem(s);
-    loadConfigurationFile("/Users/mihalistsiakkas/Dropbox/Hardware Projects/Arduino Project/controlluino/CIpp/test_config.cvc");
+
+
+
 }
 
 MainWindow::~MainWindow()
@@ -31,6 +33,19 @@ MainWindow::~MainWindow()
     }
     delete sc;
     delete ui;
+}
+
+void MainWindow::listenForComms(void) {
+    // TODO : HANDLE INCOMING MESSAGE
+
+    while(run) {
+        char buff[10];
+        sc->readMsg(buff,1);
+        if(*buff == 0xFE) {
+            cout << "INCOMING DATA MESSAGE!" << endl;
+        }
+    }
+
 }
 
 void MainWindow::on_btnSend_clicked()

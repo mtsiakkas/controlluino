@@ -56,6 +56,9 @@ private:
     template<class T> Message msgFromArray(T* msgIn, unsigned int dataLength, char* frontMatter, unsigned int fmLength, bool cs = true);
     void printHexMessage(char* msg, unsigned int length);
     void printHexMessage(Message msg);
+    void listenForComms(void);
+
+    bool run = false;
 
 private slots:
 
