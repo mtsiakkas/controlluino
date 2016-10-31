@@ -35,23 +35,13 @@ public:
         unsigned int length;
     };
 
-    enum MESSAGE_TYPE {
-        SETUP = 0,
-        POWER_OFF = 1,
-        STOP = 2,
-        START = 3,
-        SENSOR = 4,
-        REFERENCE = 5,
-        MOTOR_SETUP = 6
-    };
-
 private:
     SerialComms* sc;
     bool configFileLoaded = false;
     int numOfMotors = 6;
     Motor *motors;
 
-    int constructMsg(MESSAGE_TYPE type,char* msg);
+    bool sendSetupMsg(void);
     bool sendMotorSetupMsg(void);
     template<class T> Message msgFromArray(T* msgIn, unsigned int dataLength, char* frontMatter, unsigned int fmLength, bool cs = true);
     void printHexMessage(char* msg, unsigned int length);
@@ -63,6 +53,11 @@ private:
     RefInputDiag* rid;
     float* posRef;
     float* attRef;
+
+    char messageHeaders[4][2] = {{(char)0xFE,(char)0xFE},  // POWER OFF
+                                 {(char)0xEE,(char)0xEE},  // STOP
+                                 {(char)0xFF,(char)0xFF},  // START
+                                 {(char)0xDD,(char)0xDD}}; // SENSOR
 
 
     bool run = false;

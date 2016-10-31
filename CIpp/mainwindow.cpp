@@ -9,22 +9,24 @@ MainWindow::MainWindow(QWidget *parent) :
 {
     ui->setupUi(this);
 
+    // Instantiate SerialComms
     sc = new SerialComms();
 
+    // Look for available serial ports
     int numOfPorts = sc->discoverPorts();
 
+    // Add ports to menu and select arduino port
     for(int i=0;i<numOfPorts;i++) {
         QAction* act = ui->menuPorts->addAction(QString::fromStdString(sc->getPortName(i)));
         act->setCheckable(true);
         connect(act,SIGNAL(triggered()),this,SLOT(on_portSelectionAction_triggered()));
     }
-
-    spIndex = sc->getArduinoPortIndex();
+    spIndex = sc->getArduinoPortIndex(); // TODO: check if valid value returned
     selectedPort = ui->menuPorts->actions().at(spIndex)->text().toStdString();
     ui->menuPorts->actions().at(spIndex)->setChecked(true);
-
     ui->statusBar->showMessage("Selected port: " + QString::fromStdString(selectedPort));
 
+    // No need to do this in runtime!
     QString str[7] = {"SETUP","POWER_OFF","STOP","START","SENSOR","REFERENCE","MOTOR_SETUP"};
     for(auto s : str) {
         QAction* a = ui->menuSend->addAction(s);
@@ -32,20 +34,27 @@ MainWindow::MainWindow(QWidget *parent) :
         connect(a,SIGNAL(triggered()),this,SLOT(on_actionSend_triggered()));
     }
 
+    // Allocate heap memory
+    posRef = new float[3];
+    attRef = new float[3];
+    motors = new Motor[numOfMotors]; // TODO: Allow variability based on vehicle config file
+
+    rid = new RefInputDiag(posRef,attRef);
+    connect(rid,SIGNAL(refDialogReturn(bool)),this,SLOT(refDialogReturn(bool)));
+
 }
 
 MainWindow::~MainWindow()
 {
-    if(configFileLoaded) {
-        delete [] motors;
-    }
+    delete [] posRef;
+    delete [] attRef;
+    delete [] motors;
     delete sc;
     delete ui;
 }
 
+// TODO : HANDLE INCOMING MESSAGE
 void MainWindow::listenForComms(void) {
-    // TODO : HANDLE INCOMING MESSAGE
-
     while(run) {
         char buff[10];
         sc->readMsg(buff,1);
@@ -53,10 +62,10 @@ void MainWindow::listenForComms(void) {
             cout << "INCOMING DATA MESSAGE!" << endl;
         }
     }
-
 }
 
 void MainWindow::on_portSelectionAction_triggered() {
+    // Which action emitted signal?
     QAction* a = qobject_cast<QAction*>(sender());
     spIndex = ui->menuPorts->actions().indexOf(a);
 
@@ -72,48 +81,25 @@ void MainWindow::on_portSelectionAction_triggered() {
 
 }
 
+
+// TODO: Manually populate menu => SLOT can be separated to individual cases
 void MainWindow::on_actionSend_triggered()
 {
     QAction* a = qobject_cast<QAction*>(sender());
     int actionIndex = ui->menuSend->children().indexOf(a)-1;
 
-    MESSAGE_TYPE reqMsg = (MESSAGE_TYPE)actionIndex;
-    if(reqMsg == MOTOR_SETUP) {
+    if(actionIndex == 6) {
         if(!configFileLoaded) {
             cout << "CONFIGURATION FILE NOT LOADED" << endl;
             return;
         } else {
             sendMotorSetupMsg();
         }
-    } else if(reqMsg == REFERENCE) {
-        posRef = new float[3];
-        attRef = new float[3];
-        rid = new RefInputDiag(posRef,attRef);
-        connect(rid,SIGNAL(refDialogReturn(bool)),this,SLOT(refDialogReturn(bool)));
+    } else if(actionIndex == 5) {
         rid->show();
     } else {
 
-        char *msg;
-        msg = new char[10];
-
-        int len = constructMsg((MESSAGE_TYPE)actionIndex,msg);
-        if(len>0) {
-            cout << "Sending: ";
-            for(int i=0;i<len;i++)
-                cout << hex << (int)(*(msg+i)&0xFF) << " ";
-            cout << endl;
-
-            sc->sendMsg(msg,len);
-            char buff[10];
-            sc->readMsg(buff,2);
-            stringstream ss;
-            for(int i=0; i<2; ++i)
-                ss << hex << (int)(*(buff+i)&0xFF) << " ";
-            string str =  ss.str();
-            ui->plainTextEdit->appendPlainText("Received: " + QString::fromStdString(str));
-        } else {
-            cout << "Unable to construct message!" << endl;
-        }
+        // IMPLEMENT
     }
 }
 
@@ -158,13 +144,13 @@ void MainWindow::refDialogReturn(bool validRef)
             tmp[i+3] = *(attRef+i);
             cout << *(attRef+i) << " ";
         }
-            cout << endl;
+        cout << endl;
         char frontMatter = 0xCC;
         Message msg = msgFromArray(tmp, 6, &frontMatter, 1);
         sc->sendMsg(msg.pointer,msg.length);
 
         char buff[2];
-        int r = sc->readMsg(buff,2);
+        sc->readMsg(buff,2);
     } else {
         cout << "No valid ref" << endl;
     }
@@ -179,7 +165,6 @@ bool MainWindow::loadConfigurationFile(const string &file)
         string header;
         getline(inputFile,header);
         if(header == "** VEHICLE CONFIGURATION FILE **") {
-            motors = new Motor[numOfMotors];
 
             cout << "LOADING VEHICLE CONFIGURATION FILE" << endl;
 
@@ -187,35 +172,29 @@ bool MainWindow::loadConfigurationFile(const string &file)
             int i = 0;
             while(getline(inputFile,line) && i < numOfMotors) {
                 int cp = 0;
-                int del[4] = {0,0,0,0};
+                int delimiters[4] = {0,0,0,0};
                 for(int j=0;j<4;j++) {
-                    del[j] = line.find(',',cp);
-                    cp = del[j]+1;
+                    delimiters[j] = line.find(',',cp);
+                    cp = delimiters[j]+1;
                 }
 
                 bool type;
                 float offset;
                 float gradient;
-                int pwmMin;
-                int pwmMax;
+                unsigned int pwmMin;
+                unsigned int pwmMax;
 
                 try {
-                    type = !(line.substr(0,del[0]) == "0");
-                    offset =  stof(line.substr(del[0]+1,del[1]-del[0]));
-                    gradient =  stof(line.substr(del[1]+1,del[2]-del[1]));
-                    pwmMin = stoi(line.substr(del[2]+1,del[3]-del[2]));
-                    pwmMax = stoi(line.substr(del[3]+1));
+                    type = !(line.substr(0,delimiters[0]) == "0");
+                    offset =  stof(line.substr(delimiters[0]+1,delimiters[1]-delimiters[0]));
+                    gradient =  stof(line.substr(delimiters[1]+1,delimiters[2]-delimiters[1]));
+                    pwmMin = stoi(line.substr(delimiters[2]+1,delimiters[3]-delimiters[2]));
+                    pwmMax = stoi(line.substr(delimiters[3]+1));
                 } catch(...) {
                     cout << "Unable to parse configuration file." << endl;
                     return false;
                 }
-                Motor m;
-                m.type = type;
-                m.offset = offset;
-                m.gradient = gradient;
-                m.pwmMin = pwmMin;
-                m.pwmMax = pwmMax;
-
+                Motor m = {type, offset, gradient, pwmMin, pwmMax};
                 *(motors+i) = m;
 
                 cout << dec << i << ": " << type << " " << offset << " " << gradient << " " << pwmMin << " " << pwmMax << endl;
@@ -251,7 +230,6 @@ bool MainWindow::sendMotorSetupMsg(void) {
         motorPwmMin[i] = motors[i].pwmMin;
         motorPwmMax[i] = motors[i].pwmMax;
     }
-
     {
         char frontMatter[] = {0x33,0x00};
         Message msg =  msgFromArray(motorTypes, numOfMotors, frontMatter, 2);
@@ -371,56 +349,16 @@ template<class T> MainWindow::Message MainWindow::msgFromArray(T* msgIn, unsigne
     return msg;
 }
 
-int MainWindow::constructMsg(MESSAGE_TYPE type,char* msg) {
+bool MainWindow::sendSetupMsg(void) {
 
     /*
-     * TODO: RUNTIME MESSAGES FOR REF AND SETUP
+     * TODO:
+     * Construct and send setup message
+     * Needs options input method. Dialog or in main window?
      */
 
-    // EXCEPT FOR MOTOR SETUP
-
-    int msgLength = 0;
-    char* msgTmp;
-    switch(type) {
-    case SETUP: {
-        msgLength = 7;
-        msgTmp = "\x22\x01\x00\x14\x00\x02\xE9";
-        break;
-    }
-    case POWER_OFF: {
-        msgLength = 2;
-        msgTmp = "\xFE\xFE";
-        break;
-    }
-    case START: {
-        msgLength = 2;
-        msgTmp = "\xEE\xEE";
-        break;
-    }
-    case STOP: {
-        msgLength = 2;
-        msgTmp = "\xFF\xFF";
-    }
-    case SENSOR: {
-        msgLength = 2;
-        msgTmp = "\xDD\xDD";
-        break;
-    }
-    case REFERENCE: {
-        msgLength = 2;
-        msgTmp = "\xCC";
-        // TODO
-        return 0;
-        break;
-    }
-    default:
-        break;
-    }
-    memcpy(msg,msgTmp,msgLength);
-    return msgLength;
+    return true;
 }
-
-
 
 void MainWindow::on_actionLoad_triggered()
 {
