@@ -44,7 +44,6 @@ public:
         MOTOR_SETUP = 6
     };
 
-
 private:
     SerialComms* sc;
     bool configFileLoaded = false;
@@ -58,21 +57,27 @@ private:
     void printHexMessage(Message msg);
     void listenForComms(void);
 
+    string selectedPort;
+    int spIndex;
+
+
+
     bool run = false;
 
 private slots:
 
-    void on_btnSend_clicked();
+    void on_portSelectionAction_triggered();
+
+    void on_actionSend_triggered();
 
     void on_btnPortOC_clicked();
 
     void on_btnClear_clicked();
 
-    void on_cmbPorts_currentIndexChanged(const QString &arg1);
-
-    void on_btnLoadConfig_clicked();
-
     bool loadConfigurationFile(const string& file);
+
+
+    void on_actionLoad_triggered();
 
 private:
     Ui::MainWindow *ui;

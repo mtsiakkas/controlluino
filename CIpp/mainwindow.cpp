@@ -12,22 +12,30 @@ MainWindow::MainWindow(QWidget *parent) :
     sc = new SerialComms();
 
     int numOfPorts = sc->discoverPorts();
-    for(int i=0;i<numOfPorts;i++)
-        ui->cmbPorts->addItem(QString::fromStdString(sc->getPortName(i)));
 
-    ui->cmbPorts->setCurrentIndex(sc->getArduinoPortIndex());
+    for(int i=0;i<numOfPorts;i++) {
+        QAction* act = ui->menuPorts->addAction(QString::fromStdString(sc->getPortName(i)));
+        act->setCheckable(true);
+        connect(act,SIGNAL(triggered()),this,SLOT(on_portSelectionAction_triggered()));
+    }
+
+    spIndex = sc->getArduinoPortIndex();
+    selectedPort = ui->menuPorts->actions().at(spIndex)->text().toStdString();
+    ui->menuPorts->actions().at(spIndex)->setChecked(true);
+
+    ui->statusBar->showMessage("Selected port: " + QString::fromStdString(selectedPort));
 
     QString str[7] = {"SETUP","POWER_OFF","STOP","START","SENSOR","REFERENCE","MOTOR_SETUP"};
-    for(auto s : str)
-        ui->cmbMsgSelect->addItem(s);
-
-
+    for(auto s : str) {
+        QAction* a = ui->menuSend->addAction(s);
+        a->setEnabled(false);
+        connect(a,SIGNAL(triggered()),this,SLOT(on_actionSend_triggered()));
+    }
 
 }
 
 MainWindow::~MainWindow()
 {
-
     if(configFileLoaded) {
         delete [] motors;
     }
@@ -41,16 +49,37 @@ void MainWindow::listenForComms(void) {
     while(run) {
         char buff[10];
         sc->readMsg(buff,1);
-        if(*buff == 0xFE) {
+        if(*buff == (char)0xFE) {
             cout << "INCOMING DATA MESSAGE!" << endl;
         }
     }
 
 }
 
-void MainWindow::on_btnSend_clicked()
+void MainWindow::on_portSelectionAction_triggered() {
+    QAction* a = qobject_cast<QAction*>(sender());
+    spIndex = ui->menuPorts->actions().indexOf(a);
+
+    cout << "Selected port: " << spIndex << " " << selectedPort << endl;
+
+    ui->statusBar->showMessage("Selected port: " + QString::fromStdString(to_string(spIndex)) + " "  + a->text());
+
+
+    selectedPort = a->text().toStdString();
+
+    for(QAction* act : ui->menuPorts->actions()) {
+        act->setChecked(false);
+    }
+    a->setChecked(true);
+
+}
+
+void MainWindow::on_actionSend_triggered()
 {
-    MESSAGE_TYPE reqMsg = (MESSAGE_TYPE)ui->cmbMsgSelect->currentIndex();
+    QAction* a = qobject_cast<QAction*>(sender());
+    int actionIndex = ui->menuSend->children().indexOf(a)-1;
+    cout << "Sending message " << actionIndex << endl;
+    MESSAGE_TYPE reqMsg = (MESSAGE_TYPE)actionIndex;
     if(reqMsg == MOTOR_SETUP) {
         if(!configFileLoaded) {
             cout << "CONFIGURATION FILE NOT LOADED" << endl;
@@ -66,7 +95,7 @@ void MainWindow::on_btnSend_clicked()
         char *msg;
         msg = new char[10];
 
-        int len = constructMsg((MESSAGE_TYPE)ui->cmbMsgSelect->currentIndex(),msg);
+        int len = constructMsg((MESSAGE_TYPE)actionIndex,msg);
         if(len>0) {
             cout << "Sending: ";
             for(int i=0;i<len;i++)
@@ -90,18 +119,20 @@ void MainWindow::on_btnSend_clicked()
 void MainWindow::on_btnPortOC_clicked()
 {
     if(!sc->portReady()) {
-        cout << "Attempting to open " << ui->cmbPorts->currentText().toStdString() << endl;
-        sc->openPort(ui->cmbPorts->currentIndex());
+        cout << "Attempting to open " << selectedPort << endl;
+        sc->openPort(spIndex);
         if(sc->portReady()) {
             ui->btnPortOC->setText("Close port");
-            ui->btnSend->setEnabled(true);
-            ui->cmbMsgSelect->setEnabled(true);
+            ui->menuSend->setEnabled(true);
+            for(QAction* a : ui->menuSend->actions())
+                a->setEnabled(true);
         }
     } else {
         sc->closePort();
         ui->btnPortOC->setText("Open port");
-        ui->btnSend->setEnabled(false);
-        ui->cmbMsgSelect->setEnabled(false);
+        ui->menuSend->setEnabled(false);
+        for(QAction* a : ui->menuSend->actions())
+            a->setEnabled(false);
     }
 }
 
@@ -110,30 +141,10 @@ void MainWindow::on_btnClear_clicked()
     ui->plainTextEdit->clear();
 }
 
-void MainWindow::on_cmbPorts_currentIndexChanged(const QString &arg1)
-{
-    ui->plainTextEdit->appendPlainText("Selected port: " + arg1);
-}
-
-
-void MainWindow::on_btnLoadConfig_clicked()
-{
-    QStringList filters;
-    filters << "Vehicle configuration files (*.cvc)"
-            << "Any files (*)";
-    QFileDialog fd(this);
-    fd.setNameFilters(filters);
-    if(fd.exec()) {
-        string filename = fd.selectedFiles().first().toStdString();
-        loadConfigurationFile(filename);
-    }
-}
-
 bool MainWindow::loadConfigurationFile(const string &file)
 {
     ifstream inputFile;
     inputFile.open(file,ios::in);
-
 
     if(inputFile.is_open()) {
         string header;
@@ -303,6 +314,7 @@ void MainWindow::printHexMessage(Message msg) {
     cout << endl;
 }
 
+// Function template to generate message from data array
 template<class T> MainWindow::Message MainWindow::msgFromArray(T* msgIn, unsigned int dataLength, char* frontMatter, unsigned int fmLength, bool cs) {
     char*  ptrTmp = (char*)msgIn;                                       // Pointer type casting to read data from memory as chars
     unsigned int msgLength = dataLength*sizeof(T)/sizeof(char);         // Number of chars in data
@@ -326,9 +338,7 @@ template<class T> MainWindow::Message MainWindow::msgFromArray(T* msgIn, unsigne
     // Calculate and add checksum
     if(cs) *(msgTmp+msgLength+fmLength) = 0x100-sum%0x100;
 
-    Message msg;
-    msg.pointer = msgTmp;
-    msg.length = totalMsgLength;
+    Message msg = {msgTmp, totalMsgLength};
     return msg;
 }
 
@@ -379,4 +389,19 @@ int MainWindow::constructMsg(MESSAGE_TYPE type,char* msg) {
     }
     memcpy(msg,msgTmp,msgLength);
     return msgLength;
+}
+
+
+
+void MainWindow::on_actionLoad_triggered()
+{
+    QStringList filters;
+    filters << "Vehicle configuration files (*.cvc)"
+            << "Any files (*)";
+    QFileDialog fd(this);
+    fd.setNameFilters(filters);
+    if(fd.exec()) {
+        string filename = fd.selectedFiles().first().toStdString();
+        loadConfigurationFile(filename);
+    }
 }

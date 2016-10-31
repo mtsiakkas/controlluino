@@ -19,52 +19,8 @@
      <widget class="QPlainTextEdit" name="plainTextEdit"/>
     </item>
     <item>
-     <layout class="QHBoxLayout" name="horizontalLayout_4">
-      <item>
-       <spacer name="horizontalSpacer_2">
-        <property name="orientation">
-         <enum>Qt::Horizontal</enum>
-        </property>
-        <property name="sizeHint" stdset="0">
-         <size>
-          <width>40</width>
-          <height>20</height>
-         </size>
-        </property>
-       </spacer>
-      </item>
-      <item>
-       <widget class="QComboBox" name="cmbMsgSelect">
-        <property name="enabled">
-         <bool>false</bool>
-        </property>
-       </widget>
-      </item>
-      <item>
-       <widget class="QPushButton" name="btnSend">
-        <property name="enabled">
-         <bool>false</bool>
-        </property>
-        <property name="text">
-         <string>Send</string>
-        </property>
-       </widget>
-      </item>
-     </layout>
-    </item>
-    <item>
      <widget class="QWidget" name="widget" native="true">
       <layout class="QHBoxLayout" name="horizontalLayout">
-       <item>
-        <widget class="QComboBox" name="cmbPorts"/>
-       </item>
-       <item>
-        <widget class="QPushButton" name="btnLoadConfig">
-         <property name="text">
-          <string>Load</string>
-         </property>
-        </widget>
-       </item>
        <item>
         <spacer name="horizontalSpacer">
          <property name="orientation">
@@ -97,6 +53,49 @@
     </item>
    </layout>
   </widget>
+  <widget class="QMenuBar" name="mnuMenu">
+   <property name="geometry">
+    <rect>
+     <x>0</x>
+     <y>0</y>
+     <width>569</width>
+     <height>18</height>
+    </rect>
+   </property>
+   <widget class="QMenu" name="menu1">
+    <property name="title">
+     <string>Menu</string>
+    </property>
+    <widget class="QMenu" name="menuPorts">
+     <property name="title">
+      <string>Ports</string>
+     </property>
+    </widget>
+    <addaction name="actionLoad"/>
+    <addaction name="menuPorts"/>
+   </widget>
+   <widget class="QMenu" name="menuSend">
+    <property name="enabled">
+     <bool>false</bool>
+    </property>
+    <property name="title">
+     <string>Send</string>
+    </property>
+   </widget>
+   <addaction name="menu1"/>
+   <addaction name="menuSend"/>
+  </widget>
+  <widget class="QStatusBar" name="statusBar"/>
+  <action name="actionLoad">
+   <property name="text">
+    <string>Load</string>
+   </property>
+  </action>
+  <action name="actionPOPULATE">
+   <property name="text">
+    <string>POPULATE</string>
+   </property>
+  </action>
  </widget>
  <layoutdefault spacing="6" margin="11"/>
  <resources/>
