@@ -16,7 +16,7 @@ RefInputDiag::~RefInputDiag()
     delete ui;
 }
 
-void RefInputDiag::accepted(void) {
+void RefInputDiag::accept(void) {
     float posTmp[3] = {0,0,0};
     float attTmp[3] = {0,0,0};
     try {
@@ -28,15 +28,20 @@ void RefInputDiag::accepted(void) {
         attTmp[2] = std::stof(ui->txtAtt3->text().toStdString());
     } catch(...) {
         std::cout << "Unable to parse reference input!" << std::endl;
-        return;
+        emit refDialogReturn(false);
+        this->hide();
     }
-
+    std::cout << "Returning ref values" << std::endl;
     for(int i=0;i<3;i++) {
         *(posVec+i) = *(posTmp+i);
         *(attVec+i) = *(attTmp+i);
     }
+    emit refDialogReturn(true);
+    this->hide();
 }
 
-void RefInputDiag::rejected(void) {
-
+void RefInputDiag::reject()
+{
+    emit refDialogReturn(false);
+    this->hide();
 }

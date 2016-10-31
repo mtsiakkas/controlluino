@@ -23,8 +23,11 @@ private:
     Ui::RefInputDiag *ui;
 
 public slots:
-    void accepted(void);
-    void rejected(void);
+    void accept(void);
+    void reject(void);
+
+signals:
+    void refDialogReturn(bool);
 };
 
 #endif // REFINPUTDIAG_H

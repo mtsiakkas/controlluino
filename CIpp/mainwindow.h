@@ -57,10 +57,12 @@ private:
     void printHexMessage(char* msg, unsigned int length);
     void printHexMessage(Message msg);
     void listenForComms(void);
-
+    bool loadConfigurationFile(const string& file);
     string selectedPort;
     int spIndex;
-
+    RefInputDiag* rid;
+    float* posRef;
+    float* attRef;
 
 
     bool run = false;
@@ -75,7 +77,7 @@ private slots:
 
     void on_btnClear_clicked();
 
-    bool loadConfigurationFile(const string& file);
+    void refDialogReturn(bool validRef);
 
 
     void on_actionLoad_triggered();

@@ -63,8 +63,6 @@ void MainWindow::on_portSelectionAction_triggered() {
     cout << "Selected port: " << spIndex << " " << selectedPort << endl;
 
     ui->statusBar->showMessage("Selected port: " + QString::fromStdString(to_string(spIndex)) + " "  + a->text());
-
-
     selectedPort = a->text().toStdString();
 
     for(QAction* act : ui->menuPorts->actions()) {
@@ -78,7 +76,7 @@ void MainWindow::on_actionSend_triggered()
 {
     QAction* a = qobject_cast<QAction*>(sender());
     int actionIndex = ui->menuSend->children().indexOf(a)-1;
-    cout << "Sending message " << actionIndex << endl;
+
     MESSAGE_TYPE reqMsg = (MESSAGE_TYPE)actionIndex;
     if(reqMsg == MOTOR_SETUP) {
         if(!configFileLoaded) {
@@ -88,24 +86,11 @@ void MainWindow::on_actionSend_triggered()
             sendMotorSetupMsg();
         }
     } else if(reqMsg == REFERENCE) {
-
-        float* pos = new float[3];
-        float* att = new float[3];
-        RefInputDiag* rid = new RefInputDiag(pos,att);
-        rid->setModal(true);
-        rid->exec();
-        cout << "Pos ref: ";
-        for(int i=0;i<3;i++)
-            cout << *(pos+i) << " ";
-        cout << endl;
-        cout << "Att ref: ";
-        for(int i=0;i<3;i++)
-            cout << *(att+i) << " ";
-        cout << endl;
-
-        delete [] pos;
-        delete [] att;
-        return;
+        posRef = new float[3];
+        attRef = new float[3];
+        rid = new RefInputDiag(posRef,attRef);
+        connect(rid,SIGNAL(refDialogReturn(bool)),this,SLOT(refDialogReturn(bool)));
+        rid->show();
     } else {
 
         char *msg;
@@ -155,6 +140,34 @@ void MainWindow::on_btnPortOC_clicked()
 void MainWindow::on_btnClear_clicked()
 {
     ui->plainTextEdit->clear();
+}
+
+void MainWindow::refDialogReturn(bool validRef)
+{
+    if(validRef) {
+        float* tmp = new float[6];
+
+        cout << "Pos ref: ";
+        for(int i=0;i<3;i++) {
+            tmp[i] = *(posRef+i);
+            cout << *(posRef+i) << " ";
+        }
+        cout << endl;
+        cout << "Att ref: ";
+        for(int i=0;i<3;i++) {
+            tmp[i+3] = *(attRef+i);
+            cout << *(attRef+i) << " ";
+        }
+            cout << endl;
+        char frontMatter = 0xCC;
+        Message msg = msgFromArray(tmp, 6, &frontMatter, 1);
+        sc->sendMsg(msg.pointer,msg.length);
+
+        char buff[2];
+        int r = sc->readMsg(buff,2);
+    } else {
+        cout << "No valid ref" << endl;
+    }
 }
 
 bool MainWindow::loadConfigurationFile(const string &file)
