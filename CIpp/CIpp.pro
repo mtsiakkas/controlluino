@@ -14,12 +14,15 @@ TEMPLATE = app
 
 SOURCES += main.cpp\
         mainwindow.cpp \
-    serialcomms.cpp
+    serialcomms.cpp \
+    refinputdiag.cpp
 
 HEADERS  += mainwindow.h \
-    serialcomms.h
+    serialcomms.h \
+    refinputdiag.h
 
-FORMS    += mainwindow.ui
+FORMS    += mainwindow.ui \
+    refinputdiag.ui
 
 DISTFILES += \
     test_config.cvc

@@ -88,7 +88,23 @@ void MainWindow::on_actionSend_triggered()
             sendMotorSetupMsg();
         }
     } else if(reqMsg == REFERENCE) {
-        cout << "NOT YET IMPLEMENTED" << endl;
+
+        float* pos = new float[3];
+        float* att = new float[3];
+        RefInputDiag* rid = new RefInputDiag(pos,att);
+        rid->setModal(true);
+        rid->exec();
+        cout << "Pos ref: ";
+        for(int i=0;i<3;i++)
+            cout << *(pos+i) << " ";
+        cout << endl;
+        cout << "Att ref: ";
+        for(int i=0;i<3;i++)
+            cout << *(att+i) << " ";
+        cout << endl;
+
+        delete [] pos;
+        delete [] att;
         return;
     } else {
 

@@ -7,6 +7,7 @@
 #include <sstream>
 #include <fstream>
 #include "serialcomms.h"
+#include "refinputdiag.h"
 #include <QFileDialog>
 
 namespace Ui {
