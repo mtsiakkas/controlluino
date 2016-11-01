@@ -16,7 +16,11 @@
   <widget class="QWidget" name="centralWidget">
    <layout class="QVBoxLayout" name="verticalLayout">
     <item>
-     <widget class="QPlainTextEdit" name="plainTextEdit"/>
+     <widget class="QPlainTextEdit" name="plainTextEdit">
+      <property name="plainText">
+       <string/>
+      </property>
+     </widget>
     </item>
     <item>
      <widget class="QWidget" name="widget" native="true">
@@ -76,11 +80,18 @@
    </widget>
    <widget class="QMenu" name="menuSend">
     <property name="enabled">
-     <bool>false</bool>
+     <bool>true</bool>
     </property>
     <property name="title">
      <string>Send</string>
     </property>
+    <addaction name="actionSETUP"/>
+    <addaction name="actionPOWER_OFF"/>
+    <addaction name="actionSTOP"/>
+    <addaction name="actionSTART"/>
+    <addaction name="actionSENSOR_INIT"/>
+    <addaction name="actionREFERENCE"/>
+    <addaction name="actionMOTOR_SETUP"/>
    </widget>
    <addaction name="menu1"/>
    <addaction name="menuSend"/>
@@ -91,9 +102,39 @@
     <string>Load</string>
    </property>
   </action>
-  <action name="actionPOPULATE">
+  <action name="actionSETUP">
    <property name="text">
-    <string>POPULATE</string>
+    <string>SETUP</string>
+   </property>
+  </action>
+  <action name="actionPOWER_OFF">
+   <property name="text">
+    <string>POWER OFF</string>
+   </property>
+  </action>
+  <action name="actionSTOP">
+   <property name="text">
+    <string>STOP</string>
+   </property>
+  </action>
+  <action name="actionSTART">
+   <property name="text">
+    <string>START</string>
+   </property>
+  </action>
+  <action name="actionSENSOR_INIT">
+   <property name="text">
+    <string>SENSOR INIT</string>
+   </property>
+  </action>
+  <action name="actionREFERENCE">
+   <property name="text">
+    <string>REFERENCE</string>
+   </property>
+  </action>
+  <action name="actionMOTOR_SETUP">
+   <property name="text">
+    <string>MOTOR SETUP</string>
    </property>
   </action>
  </widget>

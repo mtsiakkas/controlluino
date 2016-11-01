@@ -26,13 +26,7 @@ MainWindow::MainWindow(QWidget *parent) :
     ui->menuPorts->actions().at(spIndex)->setChecked(true);
     ui->statusBar->showMessage("Selected port: " + QString::fromStdString(selectedPort));
 
-    // No need to do this in runtime!
-    QString str[7] = {"SETUP","POWER_OFF","STOP","START","SENSOR","REFERENCE","MOTOR_SETUP"};
-    for(auto s : str) {
-        QAction* a = ui->menuSend->addAction(s);
-        a->setEnabled(false);
-        connect(a,SIGNAL(triggered()),this,SLOT(on_actionSend_triggered()));
-    }
+    ui->menuSend->setEnabled(false);
 
     // Allocate heap memory
     posRef = new float[3];
@@ -54,14 +48,18 @@ MainWindow::~MainWindow()
 }
 
 // TODO : HANDLE INCOMING MESSAGE
-void MainWindow::listenForComms(void) {
-    while(run) {
-        char buff[10];
-        sc->readMsg(buff,1);
-        if(*buff == (char)0xFE) {
-            cout << "INCOMING DATA MESSAGE!" << endl;
+bool MainWindow::listenForComms(SerialComms::Message msg) {
+    char buff[msg.length];
+    sc->readMsg({buff,msg.length});
+
+    for(unsigned int i=0;i<msg.length;i++) {
+        if(!(*(msg.pointer+i)==*(buff+i))) {
+            printHexMessage(msg);
+            printHexMessage(buff,msg.length);
+            return false;
         }
     }
+    return true;
 }
 
 void MainWindow::on_portSelectionAction_triggered() {
@@ -81,28 +79,6 @@ void MainWindow::on_portSelectionAction_triggered() {
 
 }
 
-
-// TODO: Manually populate menu => SLOT can be separated to individual cases
-void MainWindow::on_actionSend_triggered()
-{
-    QAction* a = qobject_cast<QAction*>(sender());
-    int actionIndex = ui->menuSend->children().indexOf(a)-1;
-
-    if(actionIndex == 6) {
-        if(!configFileLoaded) {
-            cout << "CONFIGURATION FILE NOT LOADED" << endl;
-            return;
-        } else {
-            sendMotorSetupMsg();
-        }
-    } else if(actionIndex == 5) {
-        rid->show();
-    } else {
-
-        // IMPLEMENT
-    }
-}
-
 void MainWindow::on_btnPortOC_clicked()
 {
     if(!sc->portReady()) {
@@ -113,6 +89,11 @@ void MainWindow::on_btnPortOC_clicked()
             ui->menuSend->setEnabled(true);
             for(QAction* a : ui->menuSend->actions())
                 a->setEnabled(true);
+
+            if(listenForComms({incomingMessageHeaders[0],2})) {
+                cout << "RECEIVED HELLO FROM ARDUINO." << endl;
+               ui->plainTextEdit->appendPlainText("CONNECTED TO ARDUINO!");
+            }
         }
     } else {
         sc->closePort();
@@ -128,31 +109,57 @@ void MainWindow::on_btnClear_clicked()
     ui->plainTextEdit->clear();
 }
 
-void MainWindow::refDialogReturn(bool validRef)
+// Print hex values of char array
+void MainWindow::printHexMessage(char* msg,unsigned int length) {
+    for(unsigned int i=0;i<length;i++)
+        cout << hex << (int)(*(msg+i)&0xFF) << " ";
+    cout << endl;
+}
+
+void MainWindow::printHexMessage(SerialComms::Message msg) {
+    for(unsigned int i=0;i<msg.length;i++)
+        cout << hex << (int)(*(msg.pointer+i)&0xFF) << " ";
+    cout << endl;
+}
+
+// Function template to generate message from data array
+template<class T> SerialComms::Message MainWindow::msgFromArray(T* msgIn, unsigned int dataLength, char* frontMatter, unsigned int fmLength, bool cs) {
+    char*  ptrTmp = (char*)msgIn;                                       // Pointer type casting to read data from memory as chars
+    unsigned int msgLength = dataLength*sizeof(T)/sizeof(char);         // Number of chars in data
+    unsigned int totalMsgLength = fmLength + msgLength +(cs ? 1 : 0);
+    char* msgTmp;
+    msgTmp = new char[totalMsgLength];
+    long sum = 0;
+
+    // Add front matter to message
+    for(unsigned int i=0;i<fmLength;i++) {
+        *(msgTmp+i) = *(frontMatter+i);
+        sum += *(frontMatter+i);
+    }
+
+    // Add data to message
+    for(unsigned int i=0;i<msgLength;i++) {
+        sum += *(ptrTmp+i);
+        *(msgTmp+i+fmLength) = *(ptrTmp+i);
+    }
+
+    // Calculate and add checksum
+    if(cs) *(msgTmp+msgLength+fmLength) = 0x100-sum%0x100;
+
+    SerialComms::Message msg = {msgTmp, totalMsgLength};
+    return msg;
+}
+
+void MainWindow::on_actionLoad_triggered()
 {
-    if(validRef) {
-        float* tmp = new float[6];
-
-        cout << "Pos ref: ";
-        for(int i=0;i<3;i++) {
-            tmp[i] = *(posRef+i);
-            cout << *(posRef+i) << " ";
-        }
-        cout << endl;
-        cout << "Att ref: ";
-        for(int i=0;i<3;i++) {
-            tmp[i+3] = *(attRef+i);
-            cout << *(attRef+i) << " ";
-        }
-        cout << endl;
-        char frontMatter = 0xCC;
-        Message msg = msgFromArray(tmp, 6, &frontMatter, 1);
-        sc->sendMsg(msg.pointer,msg.length);
-
-        char buff[2];
-        sc->readMsg(buff,2);
-    } else {
-        cout << "No valid ref" << endl;
+    QStringList filters;
+    filters << "Vehicle configuration files (*.cvc)"
+            << "Any files (*)";
+    QFileDialog fd(this);
+    fd.setNameFilters(filters);
+    if(fd.exec()) {
+        string filename = fd.selectedFiles().first().toStdString();
+        loadConfigurationFile(filename);
     }
 }
 
@@ -167,7 +174,7 @@ bool MainWindow::loadConfigurationFile(const string &file)
         if(header == "** VEHICLE CONFIGURATION FILE **") {
 
             cout << "LOADING VEHICLE CONFIGURATION FILE" << endl;
-
+            ui->plainTextEdit->appendPlainText("LOADING VEHICLE CONFIGURATION FILE");
             string line;
             int i = 0;
             while(getline(inputFile,line) && i < numOfMotors) {
@@ -191,16 +198,21 @@ bool MainWindow::loadConfigurationFile(const string &file)
                     pwmMin = stoi(line.substr(delimiters[2]+1,delimiters[3]-delimiters[2]));
                     pwmMax = stoi(line.substr(delimiters[3]+1));
                 } catch(...) {
+                    ui->plainTextEdit->appendPlainText("Unable to parse configuration file.");
                     cout << "Unable to parse configuration file." << endl;
                     return false;
                 }
                 Motor m = {type, offset, gradient, pwmMin, pwmMax};
                 *(motors+i) = m;
 
-                cout << dec << i << ": " << type << " " << offset << " " << gradient << " " << pwmMin << " " << pwmMax << endl;
+                stringstream ss;
+                ss << dec << i << ": " << type << " " << offset << " " << gradient << " " << pwmMin << " " << pwmMax;
+                cout << ss.str() << endl;
+                ui->plainTextEdit->appendPlainText(QString::fromStdString(ss.str()));
                 i++;
             }
             configFileLoaded = true;
+             ui->plainTextEdit->appendPlainText("DONE.");
             cout << "DONE" << endl;
         } else {
             cout << "Not a valid vehicle configuration file!" << endl;
@@ -214,6 +226,24 @@ bool MainWindow::loadConfigurationFile(const string &file)
     }
     return true;
 
+}
+
+void MainWindow::on_actionSETUP_triggered()
+{
+
+}
+
+
+
+void MainWindow::on_actionMOTOR_SETUP_triggered()
+{
+    if(!configFileLoaded) {
+        cout << "CONFIGURATION FILE NOT LOADED" << endl;
+        ui->plainTextEdit->appendPlainText("CONFIGURATION FILE NOT LOADED.");
+        return;
+    } else {
+        sendMotorSetupMsg();
+    }
 }
 
 bool MainWindow::sendMotorSetupMsg(void) {
@@ -230,145 +260,137 @@ bool MainWindow::sendMotorSetupMsg(void) {
         motorPwmMin[i] = motors[i].pwmMin;
         motorPwmMax[i] = motors[i].pwmMax;
     }
+
+
+    SerialComms::Message ackMsg = {incomingMessageHeaders[4],2};
+
     {
-        char frontMatter[] = {0x33,0x00};
-        Message msg =  msgFromArray(motorTypes, numOfMotors, frontMatter, 2);
+
         cout << "MOTOR MSG (TYPES): ";
+        ui->plainTextEdit->appendPlainText("SENDING MOTOR PARAMS/TYPES...");
+        char frontMatter[] = {0x33,0x00};
+        SerialComms::Message msg =  msgFromArray(motorTypes, numOfMotors, frontMatter, 2);
         printHexMessage(msg);
 
-        sc->sendMsg(msg.pointer,msg.length);
+        sc->sendMsg(msg);
 
-        char buff[2];
-        sc->readMsg(buff,2);
-        if(!(buff[0]==0x3F && buff[0]==0x3F)) {
+        if(!listenForComms(ackMsg)) {
             cout << "FAILED TO SET MOTOR PARAMS." << endl;
+            ui->plainTextEdit->appendPlainText("FAILED TO SET MOTOR PARAMS.");
             return false;
         }
     }
     {
         cout << "MOTOR MSG (OFFSETS): ";
+        ui->plainTextEdit->appendPlainText("SENDING MOTOR PARAMS/OFFSETS...");
         char frontMatter[] = {0x33,0x01};
-        Message msg =  msgFromArray(motorOffsets, numOfMotors, frontMatter, 2);
+        SerialComms::Message msg =  msgFromArray(motorOffsets, numOfMotors, frontMatter, 2);
         printHexMessage(msg);
 
-        sc->sendMsg(msg.pointer,msg.length);
-
-        char buff[2];
-        sc->readMsg(buff,2);
-        if(!(buff[0]==0x3F && buff[0]==0x3F)) {
+        sc->sendMsg(msg);
+        if(!listenForComms(ackMsg)) {
             cout << "FAILED TO SET MOTOR PARAMS." << endl;
+            ui->plainTextEdit->appendPlainText("FAILED TO SET MOTOR PARAMS.");
             return false;
         }
     }
     {
         cout << "MOTOR MSG (GRADIENTS): ";
+        ui->plainTextEdit->appendPlainText("SENDING MOTOR PARAMS/GRADIENTS...");
         char frontMatter[] = {0x33,0x02};
-        Message msg =  msgFromArray(motorGradients, numOfMotors, frontMatter, 2);
+        SerialComms::Message msg =  msgFromArray(motorGradients, numOfMotors, frontMatter, 2);
         printHexMessage(msg);
 
-        sc->sendMsg(msg.pointer,msg.length);
-
-        char buff[2];
-        sc->readMsg(buff,2);
-        if(!(buff[0]==0x3F && buff[0]==0x3F)) {
+        sc->sendMsg(msg);
+        if(!listenForComms(ackMsg)) {
             cout << "FAILED TO SET MOTOR PARAMS." << endl;
+            ui->plainTextEdit->appendPlainText("FAILED TO SET MOTOR PARAMS.");
             return false;
         }
     }
     {
         cout << "MOTOR MSG (PWMMIN): ";
+        ui->plainTextEdit->appendPlainText("SENDING MOTOR PARAMS/PWMMIN...");
         char frontMatter[] = {0x33,0x03};
-        Message msg =  msgFromArray(motorPwmMin, numOfMotors, frontMatter, 2);
+        SerialComms::Message msg =  msgFromArray(motorPwmMin, numOfMotors, frontMatter, 2);
         printHexMessage(msg);
 
-        sc->sendMsg(msg.pointer,msg.length);
-
-        char buff[2];
-        sc->readMsg(buff,2);
-        if(!(buff[0]==0x3F && buff[0]==0x3F)) {
+        sc->sendMsg(msg);
+        if(!listenForComms(ackMsg)) {
             cout << "FAILED TO SET MOTOR PARAMS." << endl;
+            ui->plainTextEdit->appendPlainText("FAILED TO SET MOTOR PARAMS.");
             return false;
         }
     }
     {
         cout << "MOTOR MSG (PWMMAX): ";
+        ui->plainTextEdit->appendPlainText("SENDING MOTOR PARAMS/PWMMAX...");
         char frontMatter[] = {0x33,0x04};
-        Message msg =  msgFromArray(motorPwmMax, numOfMotors, frontMatter, 2);
+        SerialComms::Message msg =  msgFromArray(motorPwmMax, numOfMotors, frontMatter, 2);
         printHexMessage(msg);
 
-        sc->sendMsg(msg.pointer,msg.length);
-
-        char buff[2];
-        sc->readMsg(buff,2);
-        if(!(buff[0]==0x3F && buff[0]==0x3F)) {
+        sc->sendMsg(msg);
+        if(!listenForComms(ackMsg)) {
             cout << "FAILED TO SET MOTOR PARAMS." << endl;
+            ui->plainTextEdit->appendPlainText("FAILED TO SET MOTOR PARAMS.");
             return false;
         }
     }
     return true;
 }
 
-// Print hex values of char array
-void MainWindow::printHexMessage(char* msg,unsigned int length) {
-    for(unsigned int i=0;i<length;i++)
-        cout << hex << (int)(*(msg+i)&0xFF) << " ";
-    cout << endl;
-}
-
-void MainWindow::printHexMessage(Message msg) {
-    for(unsigned int i=0;i<msg.length;i++)
-        cout << hex << (int)(*(msg.pointer+i)&0xFF) << " ";
-    cout << endl;
-}
-
-// Function template to generate message from data array
-template<class T> MainWindow::Message MainWindow::msgFromArray(T* msgIn, unsigned int dataLength, char* frontMatter, unsigned int fmLength, bool cs) {
-    char*  ptrTmp = (char*)msgIn;                                       // Pointer type casting to read data from memory as chars
-    unsigned int msgLength = dataLength*sizeof(T)/sizeof(char);         // Number of chars in data
-    unsigned int totalMsgLength = fmLength + msgLength +(cs ? 1 : 0);
-    char* msgTmp;
-    msgTmp = new char[totalMsgLength];
-    long sum = 0;
-
-    // Add front matter to message
-    for(unsigned int i=0;i<fmLength;i++) {
-        *(msgTmp+i) = *(frontMatter+i);
-        sum += *(frontMatter+i);
-    }
-
-    // Add data to message
-    for(unsigned int i=0;i<msgLength;i++) {
-        sum += *(ptrTmp+i);
-        *(msgTmp+i+fmLength) = *(ptrTmp+i);
-    }
-
-    // Calculate and add checksum
-    if(cs) *(msgTmp+msgLength+fmLength) = 0x100-sum%0x100;
-
-    Message msg = {msgTmp, totalMsgLength};
-    return msg;
-}
-
-bool MainWindow::sendSetupMsg(void) {
-
-    /*
-     * TODO:
-     * Construct and send setup message
-     * Needs options input method. Dialog or in main window?
-     */
-
-    return true;
-}
-
-void MainWindow::on_actionLoad_triggered()
+void MainWindow::on_actionREFERENCE_triggered()
 {
-    QStringList filters;
-    filters << "Vehicle configuration files (*.cvc)"
-            << "Any files (*)";
-    QFileDialog fd(this);
-    fd.setNameFilters(filters);
-    if(fd.exec()) {
-        string filename = fd.selectedFiles().first().toStdString();
-        loadConfigurationFile(filename);
+    rid->show();
+}
+
+void MainWindow::refDialogReturn(bool validRef)
+{
+    if(validRef) {
+        float* tmp = new float[6];
+
+        cout << "Pos ref: ";
+        for(int i=0;i<3;i++) {
+            tmp[i] = *(posRef+i);
+            cout << *(posRef+i) << " ";
+        }
+        cout << endl;
+        cout << "Att ref: ";
+        for(int i=0;i<3;i++) {
+            tmp[i+3] = *(attRef+i);
+            cout << *(attRef+i) << " ";
+        }
+        cout << endl;
+        char frontMatter = 0xCC;
+        SerialComms::Message msg = msgFromArray(tmp, 6, &frontMatter, 1);
+        sc->sendMsg(msg);
+
+    } else {
+        cout << "No valid ref" << endl;
     }
 }
+
+void MainWindow::on_actionSENSOR_INIT_triggered()
+{
+    sc->sendMsg({outgoingMessageHeaders[3],2});
+    if(listenForComms({incomingMessageHeaders[1],2}))
+        cout << "SENSOR INIT ACK" << endl;
+}
+
+void MainWindow::on_actionSTART_triggered()
+{
+    sc->sendMsg({outgoingMessageHeaders[2],2});
+}
+
+void MainWindow::on_actionSTOP_triggered()
+{
+    sc->sendMsg({outgoingMessageHeaders[1],2});
+}
+
+void MainWindow::on_actionPOWER_OFF_triggered()
+{
+    sc->sendMsg({outgoingMessageHeaders[0],2});
+    if(listenForComms({incomingMessageHeaders[5],2}))
+        cout << "ARDUINO POWERING OFF" << endl;
+}
+

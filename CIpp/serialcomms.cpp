@@ -69,10 +69,10 @@ bool SerialComms::closePort() {
     return true;
 }
 
-bool SerialComms::sendMsg(char* msg, int len) {
+bool SerialComms::sendMsg(Message msg) {
     if(portReady()) {
         port->clear();
-        int w = port->write(msg,len);
+        int w = port->write(msg.pointer,msg.length);
 
         port->flush();
         return w>-1? true : false;
@@ -81,17 +81,17 @@ bool SerialComms::sendMsg(char* msg, int len) {
     }
 }
 
-int SerialComms::readMsg(char *buff, int len) {
+int SerialComms::readMsg(Message msg) {
     if(portReady()) {
-        int wCount = 0;
-        int bytesRead = 0;
+        unsigned int wCount = 0;
+        unsigned int bytesRead = 0;
 
         QByteArray resp;
-        while (bytesRead<len) {
+        while (bytesRead<msg.length) {
             port->waitForReadyRead(10);
             if(port->bytesAvailable()) bytesRead += port->bytesAvailable();
             resp.append(port->readAll());
-            if(wCount>100 && bytesRead<len) {
+            if(wCount>100 && bytesRead<msg.length) {
                 return -1;
             }
             wCount++;
@@ -100,7 +100,7 @@ int SerialComms::readMsg(char *buff, int len) {
 
         cout << "Received: ";
         for(int i=0;i<resp.length();i++) {
-            *(buff + i) = resp.at(i);
+            *(msg.pointer + i) = resp.at(i);
             cout << hex << (int)(resp.at(i)&0xFF) << " ";
         }
         cout << endl;

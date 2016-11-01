@@ -14,6 +14,8 @@ namespace Ui {
 class MainWindow;
 }
 
+
+
 class MainWindow : public QMainWindow
 {
     Q_OBJECT
@@ -30,23 +32,17 @@ public:
         unsigned int pwmMax;
     };
 
-    struct Message {
-        char* pointer;
-        unsigned int length;
-    };
-
 private:
     SerialComms* sc;
     bool configFileLoaded = false;
     int numOfMotors = 6;
     Motor *motors;
 
-    bool sendSetupMsg(void);
     bool sendMotorSetupMsg(void);
-    template<class T> Message msgFromArray(T* msgIn, unsigned int dataLength, char* frontMatter, unsigned int fmLength, bool cs = true);
+    template<class T> SerialComms::Message msgFromArray(T* msgIn, unsigned int dataLength, char* frontMatter, unsigned int fmLength, bool cs = true);
     void printHexMessage(char* msg, unsigned int length);
-    void printHexMessage(Message msg);
-    void listenForComms(void);
+    void printHexMessage(SerialComms::Message msg);
+    bool listenForComms(SerialComms::Message msg);
     bool loadConfigurationFile(const string& file);
     string selectedPort;
     int spIndex;
@@ -54,10 +50,17 @@ private:
     float* posRef;
     float* attRef;
 
-    char messageHeaders[4][2] = {{(char)0xFE,(char)0xFE},  // POWER OFF
-                                 {(char)0xEE,(char)0xEE},  // STOP
-                                 {(char)0xFF,(char)0xFF},  // START
-                                 {(char)0xDD,(char)0xDD}}; // SENSOR
+    char outgoingMessageHeaders[4][2] = {{(char)0xFE,(char)0xFE},  // POWER OFF
+                                         {(char)0xEE,(char)0xEE},  // STOP
+                                         {(char)0xFF,(char)0xFF},  // START
+                                         {(char)0xDD,(char)0xDD}}; // SENSOR
+
+    char incomingMessageHeaders[6][2] = {{(char)0xFF,(char)0xFF},  // READY
+                                         {(char)0xEF,(char)0xEF},  // SENSOR
+                                         {(char)0x2F,(char)0x2F},  // SETUP
+                                         {(char)0xDF,(char)0xDF},  // MOTORS INIT
+                                         {(char)0x3F,(char)0x3F},  // MOTOR PARAMS
+                                         {(char)0xCF,(char)0xCF}}; // POWER OFF
 
 
     bool run = false;
@@ -66,16 +69,27 @@ private slots:
 
     void on_portSelectionAction_triggered();
 
-    void on_actionSend_triggered();
-
     void on_btnPortOC_clicked();
 
     void on_btnClear_clicked();
 
     void refDialogReturn(bool validRef);
 
-
     void on_actionLoad_triggered();
+
+    void on_actionSETUP_triggered();
+
+    void on_actionMOTOR_SETUP_triggered();
+
+    void on_actionREFERENCE_triggered();
+
+    void on_actionSENSOR_INIT_triggered();
+
+    void on_actionSTART_triggered();
+
+    void on_actionSTOP_triggered();
+
+    void on_actionPOWER_OFF_triggered();
 
 private:
     Ui::MainWindow *ui;
