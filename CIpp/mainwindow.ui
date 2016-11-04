@@ -16,44 +16,162 @@
   <widget class="QWidget" name="centralWidget">
    <layout class="QVBoxLayout" name="verticalLayout">
     <item>
-     <widget class="QPlainTextEdit" name="plainTextEdit">
-      <property name="plainText">
-       <string/>
-      </property>
-     </widget>
-    </item>
-    <item>
-     <widget class="QWidget" name="widget" native="true">
-      <layout class="QHBoxLayout" name="horizontalLayout">
-       <item>
-        <spacer name="horizontalSpacer">
-         <property name="orientation">
-          <enum>Qt::Horizontal</enum>
-         </property>
-         <property name="sizeHint" stdset="0">
-          <size>
-           <width>126</width>
-           <height>20</height>
-          </size>
-         </property>
-        </spacer>
-       </item>
-       <item>
-        <widget class="QPushButton" name="btnPortOC">
-         <property name="text">
-          <string>Open port</string>
-         </property>
-        </widget>
-       </item>
-       <item>
-        <widget class="QPushButton" name="btnClear">
-         <property name="text">
-          <string>Clear</string>
-         </property>
-        </widget>
-       </item>
-      </layout>
-     </widget>
+     <layout class="QGridLayout" name="gridLayout_3">
+      <item row="1" column="0">
+       <widget class="QWidget" name="widget" native="true">
+        <layout class="QHBoxLayout" name="horizontalLayout">
+         <item>
+          <spacer name="horizontalSpacer">
+           <property name="orientation">
+            <enum>Qt::Horizontal</enum>
+           </property>
+           <property name="sizeHint" stdset="0">
+            <size>
+             <width>126</width>
+             <height>20</height>
+            </size>
+           </property>
+          </spacer>
+         </item>
+         <item>
+          <widget class="QPushButton" name="btnPortOC">
+           <property name="text">
+            <string>Open port</string>
+           </property>
+          </widget>
+         </item>
+         <item>
+          <widget class="QPushButton" name="btnClear">
+           <property name="text">
+            <string>Clear</string>
+           </property>
+          </widget>
+         </item>
+        </layout>
+       </widget>
+      </item>
+      <item row="0" column="0">
+       <widget class="QPlainTextEdit" name="plainTextEdit">
+        <property name="plainText">
+         <string/>
+        </property>
+       </widget>
+      </item>
+      <item row="0" column="1">
+       <layout class="QVBoxLayout" name="verticalLayout_5">
+        <item>
+         <widget class="QComboBox" name="cmbOutput1">
+          <item>
+           <property name="text">
+            <string>Attitude::Quaternion</string>
+           </property>
+          </item>
+          <item>
+           <property name="text">
+            <string>Attitude::Euler</string>
+           </property>
+          </item>
+          <item>
+           <property name="text">
+            <string>Angular rates</string>
+           </property>
+          </item>
+          <item>
+           <property name="text">
+            <string>Position</string>
+           </property>
+          </item>
+          <item>
+           <property name="text">
+            <string>Velocity</string>
+           </property>
+          </item>
+          <item>
+           <property name="text">
+            <string>Actuator</string>
+           </property>
+          </item>
+          <item>
+           <property name="text">
+            <string>None</string>
+           </property>
+          </item>
+         </widget>
+        </item>
+        <item>
+         <widget class="QComboBox" name="cmbOutput2">
+          <item>
+           <property name="text">
+            <string>Attitude::Quaternion</string>
+           </property>
+          </item>
+          <item>
+           <property name="text">
+            <string>Attitude::Euler</string>
+           </property>
+          </item>
+          <item>
+           <property name="text">
+            <string>Angular rates</string>
+           </property>
+          </item>
+          <item>
+           <property name="text">
+            <string>Position</string>
+           </property>
+          </item>
+          <item>
+           <property name="text">
+            <string>Velocity</string>
+           </property>
+          </item>
+          <item>
+           <property name="text">
+            <string>Actuator</string>
+           </property>
+          </item>
+          <item>
+           <property name="text">
+            <string>None</string>
+           </property>
+          </item>
+         </widget>
+        </item>
+        <item>
+         <widget class="QComboBox" name="cmbScenario">
+          <item>
+           <property name="text">
+            <string>Force control</string>
+           </property>
+          </item>
+          <item>
+           <property name="text">
+            <string>Attitude control</string>
+           </property>
+          </item>
+          <item>
+           <property name="text">
+            <string>Position control</string>
+           </property>
+          </item>
+         </widget>
+        </item>
+        <item>
+         <spacer name="verticalSpacer">
+          <property name="orientation">
+           <enum>Qt::Vertical</enum>
+          </property>
+          <property name="sizeHint" stdset="0">
+           <size>
+            <width>20</width>
+            <height>40</height>
+           </size>
+          </property>
+         </spacer>
+        </item>
+       </layout>
+      </item>
+     </layout>
     </item>
    </layout>
   </widget>
@@ -96,7 +214,6 @@
    <addaction name="menu1"/>
    <addaction name="menuSend"/>
   </widget>
-  <widget class="QStatusBar" name="statusBar"/>
   <action name="actionLoad">
    <property name="text">
     <string>Load</string>

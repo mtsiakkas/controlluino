@@ -9,6 +9,8 @@ RefInputDiag::RefInputDiag(float* pos, float* att, QWidget *parent) :
     posVec = pos;
     attVec = att;
 
+    this->setAttribute(Qt::WA_DeleteOnClose);
+
 }
 
 RefInputDiag::~RefInputDiag()
@@ -38,10 +40,12 @@ void RefInputDiag::accept(void) {
     }
     emit refDialogReturn(true);
     this->hide();
+    this->destroy();
 }
 
 void RefInputDiag::reject()
 {
     emit refDialogReturn(false);
     this->hide();
+    this->destroy();
 }

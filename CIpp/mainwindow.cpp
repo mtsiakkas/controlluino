@@ -24,7 +24,6 @@ MainWindow::MainWindow(QWidget *parent) :
     spIndex = sc->getArduinoPortIndex(); // TODO: check if valid value returned
     selectedPort = ui->menuPorts->actions().at(spIndex)->text().toStdString();
     ui->menuPorts->actions().at(spIndex)->setChecked(true);
-    ui->statusBar->showMessage("Selected port: " + QString::fromStdString(selectedPort));
 
     ui->menuSend->setEnabled(false);
 
@@ -33,8 +32,6 @@ MainWindow::MainWindow(QWidget *parent) :
     attRef = new float[3];
     motors = new Motor[numOfMotors]; // TODO: Allow variability based on vehicle config file
 
-    rid = new RefInputDiag(posRef,attRef);
-    connect(rid,SIGNAL(refDialogReturn(bool)),this,SLOT(refDialogReturn(bool)));
 
 }
 
@@ -69,7 +66,6 @@ void MainWindow::on_portSelectionAction_triggered() {
 
     cout << "Selected port: " << spIndex << " " << selectedPort << endl;
 
-    ui->statusBar->showMessage("Selected port: " + QString::fromStdString(to_string(spIndex)) + " "  + a->text());
     selectedPort = a->text().toStdString();
 
     for(QAction* act : ui->menuPorts->actions()) {
@@ -90,9 +86,9 @@ void MainWindow::on_btnPortOC_clicked()
             for(QAction* a : ui->menuSend->actions())
                 a->setEnabled(true);
 
-            if(listenForComms({incomingMessageHeaders[0],2})) {
+            if(listenForComms({incomingMessageHeaders[MESSAGE_IN::READY],2})) {
                 cout << "RECEIVED HELLO FROM ARDUINO." << endl;
-               ui->plainTextEdit->appendPlainText("CONNECTED TO ARDUINO!");
+                ui->plainTextEdit->appendPlainText("CONNECTED TO ARDUINO!");
             }
         }
     } else {
@@ -341,6 +337,8 @@ bool MainWindow::sendMotorSetupMsg(void) {
 
 void MainWindow::on_actionREFERENCE_triggered()
 {
+    rid = new RefInputDiag(posRef,attRef);
+    connect(rid,SIGNAL(refDialogReturn(bool)),this,SLOT(refDialogReturn(bool)));
     rid->show();
 }
 
@@ -372,25 +370,25 @@ void MainWindow::refDialogReturn(bool validRef)
 
 void MainWindow::on_actionSENSOR_INIT_triggered()
 {
-    sc->sendMsg({outgoingMessageHeaders[3],2});
-    if(listenForComms({incomingMessageHeaders[1],2}))
+    sc->sendMsg({outgoingMessageHeaders[MESSAGE_OUT::SENSOR_INIT],2});
+    if(listenForComms({incomingMessageHeaders[MESSAGE_IN::SENSOR_INIT],2}))
         cout << "SENSOR INIT ACK" << endl;
 }
 
 void MainWindow::on_actionSTART_triggered()
 {
-    sc->sendMsg({outgoingMessageHeaders[2],2});
+    sc->sendMsg({outgoingMessageHeaders[MESSAGE_OUT::START],2});
 }
 
 void MainWindow::on_actionSTOP_triggered()
 {
-    sc->sendMsg({outgoingMessageHeaders[1],2});
+    sc->sendMsg({outgoingMessageHeaders[MESSAGE_OUT::STOP],2});
 }
 
 void MainWindow::on_actionPOWER_OFF_triggered()
 {
-    sc->sendMsg({outgoingMessageHeaders[0],2});
-    if(listenForComms({incomingMessageHeaders[5],2}))
+    sc->sendMsg({outgoingMessageHeaders[MESSAGE_OUT::POWER_OFF],2});
+    if(listenForComms({incomingMessageHeaders[MESSAGE_IN::POWER_OFF],2}))
         cout << "ARDUINO POWERING OFF" << endl;
 }
 

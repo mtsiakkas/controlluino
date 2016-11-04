@@ -46,8 +46,8 @@ float* output = NULL;
 int samplingTime = 50000;       // Sampling time in us
 
 int scenario = ATTITUDE_CONTROL;
-int output1 = TORQUES_OUTPUT;
-int output2 = FORCES_OUTPUT;
+int output1 = ACTUATOR_OUTPUT;
+int output2 = QUATERNION_OUTPUT;
 int outputLength = 6;
 
 void configureOutput();
@@ -359,7 +359,7 @@ void powerOff() {
   STATUS_LOW;
   delay(50);
 
-  //    reset();/
+  reset();
   xSendInfoMsg(X_POWER_OFF);
 }
 
@@ -385,6 +385,8 @@ void quat2euler(float* q, float* e) {
   *(e + 2) = atan2(2 * (*(quat + 0)**(quat + 3) + * (quat + 1)**(quat + 2)), 1 - 2 * (*(quat + 2)**(quat + 2) + * (quat + 3)**(quat + 3)));
 }
 
+
+// FIX ALLOC FOR ACTUATOR OUTPUT
 void configureOutput() {
   if ((output1 == QUATERNION_OUTPUT) && (output2 == QUATERNION_OUTPUT)) {
     output = (float*) realloc (output, 8 * sizeof(float));
@@ -423,17 +425,8 @@ void assembleOutput() {
     case GYRO_OUTPUT:
       for (int i = 0; i < 3; i++) *(output + i) = *(gyro + i);
       break;
-    case TORQUES_OUTPUT:
-      for (int i = 0; i < 3; i++) *(output + i) = *(tfb + i);
-      break;
-    case FORCES_OUTPUT:
-      for (int i = 0; i < 3; i++) *(output + i) = *(tfb + 3 + i);
-      break;
-    case SERVOS_OUTPUT:
-      for (int i = 0; i < 3; i++) *(output + i) = *(u + 3 + i);
-      break;
-    case MOTORS_OUTPUT:
-      for (int i = 0; i < 3; i++) *(output + i) = *(u + i);
+    case ACTUATOR_OUTPUT:
+      for (int i = 0; i < 6; i++) *(output + i) = *(u + i);
       break;
     case VELOCITY_OUTPUT:
       for (int i = 0; i < 3; i++) *(output + i) = *(vel + i);
@@ -460,17 +453,8 @@ void assembleOutput() {
     case GYRO_OUTPUT:
       for (int i = 0; i < 3; i++) *(output + offset + i) = *(gyro + i);
       break;
-    case TORQUES_OUTPUT:
-      for (int i = 0; i < 3; i++) *(output + offset + i) = *(tfb + i);
-      break;
-    case FORCES_OUTPUT:
-      for (int i = 0; i < 3; i++) *(output + offset + i) = *(tfb + 3 + i);
-      break;
-    case SERVOS_OUTPUT:
-      for (int i = 0; i < 3; i++) *(output + offset + i) = *(u + 3 + i);
-      break;
-    case MOTORS_OUTPUT:
-      for (int i = 0; i < 3; i++) *(output + offset + i) = *(u + i);
+    case ACTUATOR_OUTPUT:
+      for (int i = 0; i < 6; i++) *(output + offset + i) = *(u + i);
       break;
     case VELOCITY_OUTPUT:
       for (int i = 0; i < 3; i++) *(output + offset + i) = *(vel + i);
