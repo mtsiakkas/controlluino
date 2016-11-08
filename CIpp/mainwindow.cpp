@@ -8,6 +8,9 @@ MainWindow::MainWindow(QWidget *parent) :
     ui(new Ui::MainWindow)
 {
     ui->setupUi(this);
+//    ui->menuPorts->removeAction(ui->menuPorts->actions().constFirst());
+    ui->menuPorts->clear();
+
 
     // Instantiate SerialComms
     sc = new SerialComms();
@@ -19,9 +22,13 @@ MainWindow::MainWindow(QWidget *parent) :
     for(int i=0;i<numOfPorts;i++) {
         QAction* act = ui->menuPorts->addAction(QString::fromStdString(sc->getPortName(i)));
         act->setCheckable(true);
-        connect(act,SIGNAL(triggered()),this,SLOT(on_portSelectionAction_triggered()));
+        connect(act,SIGNAL(triggered()),this,SLOT(on_actionPLACEHOLDER_triggered()));
     }
-    spIndex = sc->getArduinoPortIndex(); // TODO: check if valid value returned
+
+    spIndex = sc->getArduinoPortIndex();
+    // Check if valid value returned
+    spIndex = spIndex > -1 && spIndex < numOfPorts ? spIndex : 0;
+    cout << "ARDUINO PORT INDEX " << spIndex << endl;
     selectedPort = ui->menuPorts->actions().at(spIndex)->text().toStdString();
     ui->menuPorts->actions().at(spIndex)->setChecked(true);
 
@@ -57,22 +64,6 @@ bool MainWindow::listenForComms(SerialComms::Message msg) {
         }
     }
     return true;
-}
-
-void MainWindow::on_portSelectionAction_triggered() {
-    // Which action emitted signal?
-    QAction* a = qobject_cast<QAction*>(sender());
-    spIndex = ui->menuPorts->actions().indexOf(a);
-
-    cout << "Selected port: " << spIndex << " " << selectedPort << endl;
-
-    selectedPort = a->text().toStdString();
-
-    for(QAction* act : ui->menuPorts->actions()) {
-        act->setChecked(false);
-    }
-    a->setChecked(true);
-
 }
 
 void MainWindow::on_btnPortOC_clicked()
@@ -392,3 +383,19 @@ void MainWindow::on_actionPOWER_OFF_triggered()
         cout << "ARDUINO POWERING OFF" << endl;
 }
 
+
+void MainWindow::on_actionPLACEHOLDER_triggered()
+{
+    // Which action emitted signal?
+    QAction* a = qobject_cast<QAction*>(sender());
+    spIndex = ui->menuPorts->actions().indexOf(a);
+
+    cout << "Selected port: " << spIndex << " " << selectedPort << endl;
+
+    selectedPort = a->text().toStdString();
+
+    for(QAction* act : ui->menuPorts->actions()) {
+        act->setChecked(false);
+    }
+    a->setChecked(true);
+}

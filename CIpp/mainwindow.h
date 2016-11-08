@@ -91,7 +91,7 @@ private:
 
 private slots:
 
-    void on_portSelectionAction_triggered();
+//    void on_portSelectionAction_triggered();
     void on_btnPortOC_clicked();
     void on_btnClear_clicked();
     void refDialogReturn(bool validRef);
@@ -103,6 +103,8 @@ private slots:
     void on_actionSTART_triggered();
     void on_actionSTOP_triggered();
     void on_actionPOWER_OFF_triggered();
+
+    void on_actionPLACEHOLDER_triggered();
 
 private:
     Ui::MainWindow *ui;
