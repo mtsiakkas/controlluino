@@ -27,8 +27,10 @@ MainWindow::MainWindow(QWidget *parent) :
 
     spIndex = sc->getArduinoPortIndex();
     // Check if valid value returned
+    if(spIndex == -1)
+        cout << "ARDUINO DEVICE NOT FOUND" << endl;
     spIndex = spIndex > -1 && spIndex < numOfPorts ? spIndex : 0;
-    cout << "ARDUINO PORT INDEX " << spIndex << endl;
+
     selectedPort = ui->menuPorts->actions().at(spIndex)->text().toStdString();
     ui->menuPorts->actions().at(spIndex)->setChecked(true);
 

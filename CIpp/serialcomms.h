@@ -35,7 +35,7 @@ private:
     QSerialPort *port = nullptr;
     QList<QSerialPortInfo> infos;
     int numOfPorts;
-    int arduinoPortIndex;
+    int arduinoPortIndex = -1;
 
 };
 
